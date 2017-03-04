@@ -26,7 +26,7 @@ def GetUnitData(datas, attr):
     if len(value):
         return value[0]
 
-def GetUnitHtml(url):
+def GetUnitHtml(url, targets):
     unitHtml = urllib.urlopen(url)
 
     unitDatas = []
@@ -35,20 +35,22 @@ def GetUnitHtml(url):
         unitDatas += unitDataPat_2.findall(line)
     
     data = []
-    data.append(GetUnitData(unitDatas, '覚醒総合DPS'))
-    data.append(GetUnitData(unitDatas, '攻撃段数'))
-    data.append(GetUnitData(unitDatas, '攻撃間隔'))
+    for target in targets:
+        data.append(GetUnitData(unitDatas, target))
+
     return data
 
 def WriteXls(data):
     wb = xlwt.Workbook(encoding = 'utf8')
     sheet = wb.add_sheet('hi')
+    data[0] = ['角色名稱'] + data[0]
+    data[0][len(data[0]) - 1] = '段数/s'
 
     for i in range(len(data)):
-        for j in range(len(data[0])):
+        for j in range(len(data[1])):
             sheet.write(i, j, data[i][j])
 
-    wb.save('merc.xls')
+    wb.save('merc.xlsx')
 
 if __name__ == '__main__':
     
@@ -58,26 +60,20 @@ if __name__ == '__main__':
     for line in mhHtml:
         unitNames += unitNamePat.findall(line)
 
-    unitDatas = [[u'角色名稱', u'DPS', u'段數/s']]
+    unitDatas = [['属性', '成長タイプ', '覚醒体力', '移動速度', '同時攻撃数', '覚醒DPS', '覚醒総合DPS', '攻撃段数', '攻撃間隔']]
     cnt = 0
     for unitName in unitNames:
-        unitDatas.append([unitName] + GetUnitHtml(unitUrl + urllib.quote(unitName)))
+        unitDatas.append([unitName] + GetUnitHtml(unitUrl + urllib.quote(unitName), unitDatas[0]))
         cnt += 1
         if cnt > 1000:
             break
         
-    for i in range(len(unitDatas)):
-        if i == 0:
-            continue
-        
-        d = unitDatas[i][len(unitDatas[i]) - 2]
-        if len(d) == 0:
-            d = float(1)
-        else:
-            d = float(d[0])
+    for i in range(1, len(unitDatas)):
+        if len(unitDatas[i][len(unitDatas[i]) - 2]) == 0:
+            unitDatas[i][len(unitDatas[i]) - 2] = '1段'
 
+        d = float(unitDatas[i][len(unitDatas[i]) - 2][0])
         s = float(unitDatas[i][len(unitDatas[i]) - 1])
-        unitDatas[i].pop()
         unitDatas[i][len(unitDatas[i]) - 1] = '%.4f' % (d / s)
 
     WriteXls(unitDatas)
